@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: voicepipe-redis
+    ports:
+      - "6380:6379"
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  voicepipe:
+    build: .
+    container_name: voicepipe-service
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - REDIS_ADDR=redis:6379
+      - WORKER_CONCURRENCY=16
+      - LOG_FORMAT=json
+    depends_on:
+      - redis
+    restart: unless-stopped
