@@ -21,16 +21,21 @@ type MessageBroker interface {
 
 // MemoryBroker is an in-memory high-throughput broker using buffered channels & pub-sub maps
 type MemoryBroker struct {
-	mu     sync.RWMutex
-	queues map[string]chan *model.PipelineJob
-	topics map[string][]chan []byte
-	closed bool
+	mu         sync.RWMutex
+	queues     map[string]chan *model.PipelineJob
+	topics     map[string][]chan []byte
+	bufferSize int
+	closed     bool
 }
 
 func NewMemoryBroker(bufferSize int) *MemoryBroker {
+	if bufferSize <= 0 {
+		bufferSize = 2048
+	}
 	return &MemoryBroker{
-		queues: make(map[string]chan *model.PipelineJob),
-		topics: make(map[string][]chan []byte),
+		queues:     make(map[string]chan *model.PipelineJob),
+		topics:     make(map[string][]chan []byte),
+		bufferSize: bufferSize,
 	}
 }
 
@@ -40,7 +45,7 @@ func (m *MemoryBroker) getOrCreateQueue(name string) chan *model.PipelineJob {
 
 	ch, ok := m.queues[name]
 	if !ok {
-		ch = make(chan *model.PipelineJob, 2048)
+		ch = make(chan *model.PipelineJob, m.bufferSize)
 		m.queues[name] = ch
 	}
 	return ch
@@ -77,11 +82,27 @@ func (m *MemoryBroker) SubscribeStream(ctx context.Context, topic string, group 
 	m.mu.Unlock()
 
 	go func() {
+		defer func() {
+			m.mu.Lock()
+			subs := m.topics[topic]
+			for i, sub := range subs {
+				if sub == ch {
+					m.topics[topic] = append(subs[:i], subs[i+1:]...)
+					break
+				}
+			}
+			m.mu.Unlock()
+			close(ch)
+		}()
+
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case data := <-ch:
+			case data, ok := <-ch:
+				if !ok {
+					return
+				}
 				_ = handler(data)
 			}
 		}

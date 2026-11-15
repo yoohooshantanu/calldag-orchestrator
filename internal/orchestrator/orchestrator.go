@@ -189,6 +189,7 @@ func (o *WorkflowOrchestrator) Start() {
 
 func (o *WorkflowOrchestrator) workerLoop(workerNum int) {
 	defer o.wg.Done()
+	logger.L.Debug("orchestrator_worker_started", "worker_num", workerNum, "worker_id", o.workerID)
 
 	for {
 		select {
@@ -256,8 +257,17 @@ func (o *WorkflowOrchestrator) handleStepFailure(job *model.PipelineJob, err err
 		// Exponential backoff wait before re-enqueue
 		backoff := time.Duration(1<<job.RetryCount) * 100 * time.Millisecond
 		go func() {
-			time.Sleep(backoff)
-			_ = o.broker.EnqueueJob(context.Background(), o.queueName, job)
+			select {
+			case <-time.After(backoff):
+				select {
+				case <-o.ctx.Done():
+					return
+				default:
+					_ = o.broker.EnqueueJob(context.Background(), o.queueName, job)
+				}
+			case <-o.ctx.Done():
+				return
+			}
 		}()
 		logger.L.Warn("pipeline_job_retry", "job_id", job.ID, "attempt", job.RetryCount, "error", err.Error())
 	} else {

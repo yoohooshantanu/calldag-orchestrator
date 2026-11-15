@@ -9,6 +9,9 @@ import (
 	"github.com/yoohooshantanu/voicepipe/internal/model"
 )
 
+// Lock hierarchy: StreamManager.mu > AudioBuffer.mu.
+// Always acquire sm.mu before b.mu; never acquire sm.mu while holding b.mu.
+
 // AudioBuffer maintains ordered chunks for a live telephony call session
 type AudioBuffer struct {
 	mu           sync.RWMutex
@@ -45,6 +48,11 @@ func (b *AudioBuffer) IngestChunk(chunk *model.AudioChunk) (*model.StreamAck, er
 			Accepted:      false,
 			Message:       "duplicate sequence already acknowledged",
 		}, model.ErrDuplicateAudioSeq
+	}
+
+	// Prevent duplicate future chunk from double-counting bytes
+	if existing, exists := b.chunks[chunk.Sequence]; exists {
+		b.totalBytes -= len(existing.Data)
 	}
 
 	b.chunks[chunk.Sequence] = chunk
@@ -98,15 +106,26 @@ type StreamManager struct {
 	mu      sync.RWMutex
 	buffers map[string]*AudioBuffer
 	ttl     time.Duration
+	stopCh  chan struct{}
 }
 
 func NewStreamManager(ttl time.Duration) *StreamManager {
 	sm := &StreamManager{
 		buffers: make(map[string]*AudioBuffer),
 		ttl:     ttl,
+		stopCh:  make(chan struct{}),
 	}
 	go sm.evictionLoop()
 	return sm
+}
+
+func (sm *StreamManager) Stop() {
+	select {
+	case <-sm.stopCh:
+		// already closed
+	default:
+		close(sm.stopCh)
+	}
 }
 
 func (sm *StreamManager) GetOrCreate(callID string) *AudioBuffer {
@@ -138,20 +157,25 @@ func (sm *StreamManager) evictionLoop() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		sm.mu.Lock()
-		now := time.Now()
-		for id, b := range sm.buffers {
-			b.mu.RLock()
-			expired := now.Sub(b.lastActivity) > sm.ttl
-			b.mu.RUnlock()
+	for {
+		select {
+		case <-sm.stopCh:
+			return
+		case <-ticker.C:
+			sm.mu.Lock()
+			now := time.Now()
+			for id, b := range sm.buffers {
+				b.mu.RLock()
+				expired := now.Sub(b.lastActivity) > sm.ttl
+				b.mu.RUnlock()
 
-			if expired {
-				delete(sm.buffers, id)
-				logger.L.Debug("evicted_stale_audio_stream", "call_id", id)
+				if expired {
+					delete(sm.buffers, id)
+					logger.L.Debug("evicted_stale_audio_stream", "call_id", id)
+				}
 			}
+			metrics.DefaultMetrics.SetStreamBacklog(int64(len(sm.buffers)))
+			sm.mu.Unlock()
 		}
-		metrics.DefaultMetrics.SetStreamBacklog(int64(len(sm.buffers)))
-		sm.mu.Unlock()
 	}
 }
