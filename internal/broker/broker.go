@@ -185,7 +185,11 @@ func (r *RedisStreamBroker) SubscribeStream(ctx context.Context, topic string, g
 				}).Result()
 
 				if err != nil {
-					time.Sleep(500 * time.Millisecond)
+					select {
+					case <-time.After(500 * time.Millisecond):
+					case <-ctx.Done():
+						return
+					}
 					continue
 				}
 

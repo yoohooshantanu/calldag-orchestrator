@@ -114,6 +114,17 @@ func main() {
 		// Also publish to real-time distributed stream
 		_ = msgBroker.PublishStream(r.Context(), "audio:"+callID, chunk)
 
+		// On final chunk, broadcast stream completion metadata for downstream consumers
+		if isFinal {
+			assembled, lastSeq, totalFrames := buf.AssembleContiguousAudio()
+			_ = msgBroker.PublishStream(r.Context(), "audio:completed:"+callID, map[string]interface{}{
+				"call_id":      callID,
+				"total_frames": totalFrames,
+				"last_seq":     lastSeq,
+				"total_bytes":  len(assembled),
+			})
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		_ = json.NewEncoder(w).Encode(ack)
