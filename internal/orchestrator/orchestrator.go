@@ -218,6 +218,13 @@ func (o *WorkflowOrchestrator) workerLoop(workerNum int) {
 }
 
 func (o *WorkflowOrchestrator) executeJobPipeline(job *model.PipelineJob) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.L.Error("pipeline_job_panic_recovered", "job_id", job.ID, "panic", r)
+			o.handleStepFailure(job, fmt.Errorf("panic in workflow step: %v", r))
+		}
+	}()
+
 	start := time.Now()
 	steps, ok := o.steps[job.WorkflowType]
 	if !ok {

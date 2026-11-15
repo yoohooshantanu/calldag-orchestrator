@@ -116,10 +116,11 @@ func (b *AudioBuffer) AssembleContiguousAudio() ([]byte, uint64, int) {
 
 // StreamManager manages multi-tenant active audio streaming sessions
 type StreamManager struct {
-	mu      sync.RWMutex
-	buffers map[string]*AudioBuffer
-	ttl     time.Duration
-	stopCh  chan struct{}
+	mu       sync.RWMutex
+	buffers  map[string]*AudioBuffer
+	ttl      time.Duration
+	stopCh   chan struct{}
+	stopOnce sync.Once
 }
 
 func NewStreamManager(ttl time.Duration) *StreamManager {
@@ -133,12 +134,9 @@ func NewStreamManager(ttl time.Duration) *StreamManager {
 }
 
 func (sm *StreamManager) Stop() {
-	select {
-	case <-sm.stopCh:
-		// already closed
-	default:
+	sm.stopOnce.Do(func() {
 		close(sm.stopCh)
-	}
+	})
 }
 
 func (sm *StreamManager) GetOrCreate(callID string) *AudioBuffer {
