@@ -36,6 +36,17 @@ func NewMemoryStateStore() *MemoryStateStore {
 func (s *MemoryStateStore) SaveJob(ctx context.Context, job *model.PipelineJob) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Prune completed/stale jobs if state store exceeds 10,000 entries
+	if len(s.jobs) > 10000 {
+		now := time.Now().UTC()
+		for id, j := range s.jobs {
+			if now.Sub(j.CreatedAt) > 2*time.Hour {
+				delete(s.jobs, id)
+			}
+		}
+	}
+
 	cp := *job
 	s.jobs[job.ID] = &cp
 	return nil

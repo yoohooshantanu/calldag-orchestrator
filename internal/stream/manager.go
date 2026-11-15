@@ -32,12 +32,25 @@ func NewAudioBuffer(callID string) *AudioBuffer {
 	}
 }
 
+const MaxChunksPerCall = 50000
+
 // IngestChunk safely buffers incoming frames, checking sequence monotonicity
 func (b *AudioBuffer) IngestChunk(chunk *model.AudioChunk) (*model.StreamAck, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	b.lastActivity = time.Now()
+
+	// Enforce maximum buffer capacity per call to prevent memory exhaustion
+	if len(b.chunks) >= MaxChunksPerCall {
+		return &model.StreamAck{
+			CallID:        b.callID,
+			LastAckSeq:    b.expectedSeq - 1,
+			BufferBacklog: len(b.chunks),
+			Accepted:      false,
+			Message:       "stream buffer capacity exceeded",
+		}, model.ErrQueueSaturated
+	}
 
 	// Check for backwards duplicate sequence
 	if chunk.Sequence < b.expectedSeq {

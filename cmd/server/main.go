@@ -232,6 +232,7 @@ func main() {
 
 	_ = server.Shutdown(ctx)
 	orch.Stop()
+	streamMgr.Stop()
 	_ = msgBroker.Close()
 	logger.L.Info("voicepipe_terminated_cleanly")
 }
