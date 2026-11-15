@@ -58,9 +58,9 @@ func (m *MemoryBroker) PublishStream(ctx context.Context, topic string, payload 
 	}
 
 	m.mu.RLock()
-	subs, ok := m.topics[topic]
-	m.mu.RUnlock()
+	defer m.mu.RUnlock()
 
+	subs, ok := m.topics[topic]
 	if !ok {
 		return nil
 	}
@@ -91,8 +91,8 @@ func (m *MemoryBroker) SubscribeStream(ctx context.Context, topic string, group 
 					break
 				}
 			}
-			m.mu.Unlock()
 			close(ch)
+			m.mu.Unlock()
 		}()
 
 		for {
