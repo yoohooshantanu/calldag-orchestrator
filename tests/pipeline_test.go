@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yoohooshantanu/voicepipe/internal/broker"
-	"github.com/yoohooshantanu/voicepipe/internal/model"
-	"github.com/yoohooshantanu/voicepipe/internal/orchestrator"
-	"github.com/yoohooshantanu/voicepipe/internal/stream"
+	"github.com/yoohooshantanu/audio-pipeline/internal/broker"
+	"github.com/yoohooshantanu/audio-pipeline/internal/model"
+	"github.com/yoohooshantanu/audio-pipeline/internal/orchestrator"
+	"github.com/yoohooshantanu/audio-pipeline/internal/stream"
 )
 
 func TestAudioBufferOrderingAndAssembly(t *testing.T) {

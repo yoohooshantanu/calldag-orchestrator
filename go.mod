@@ -1,4 +1,4 @@
-module github.com/yoohooshantanu/voicepipe
+module github.com/yoohooshantanu/audio-pipeline
 
 go 1.23.0
 

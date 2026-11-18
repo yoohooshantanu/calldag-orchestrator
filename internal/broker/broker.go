@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/yoohooshantanu/voicepipe/internal/model"
+	"github.com/yoohooshantanu/audio-pipeline/internal/model"
 )
 
 // MessageBroker defines the interface for distributed streaming and message queuing

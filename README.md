@@ -1,9 +1,9 @@
-# VoicePipe: Distributed Real-Time Audio Chunk Pipeline & Async Workflow Orchestrator
+# AudioPipeline: Distributed Real-Time Audio Chunk Pipeline & Async Workflow Orchestrator
 
-[![CI Pipeline](https://github.com/yoohooshantanu/voicepipe/actions/workflows/ci.yml/badge.svg)](https://github.com/yoohooshantanu/voicepipe/actions)
+[![CI Pipeline](https://github.com/yoohooshantanu/audio-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/yoohooshantanu/audio-pipeline/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**VoicePipe** is a high-throughput, low-latency audio chunk streaming and distributed asynchronous workflow orchestrator written in Go. It is purpose-built to solve the dual challenges of real-time conversational AI voice systems:
+**AudioPipeline** is a high-throughput, low-latency audio chunk streaming and distributed asynchronous workflow orchestrator written in Go. It is purpose-built to solve the dual challenges of real-time conversational AI voice systems:
 
 1. **Sub-millisecond Real-Time Fast Path**: Zero-loss buffering, out-of-order reassembly, and flow control for streaming telephony audio chunks (PCM/Opus).
 2. **Resilient Long-Running Async Workflow Path**: Distributed multi-stage task orchestration (post-call audio stitching, speech transcription, LLM conversation summarization, and CRM synchronization) with worker leasing, automatic exponential retries, and Dead Letter Queue (DLQ) state persistence.
@@ -43,7 +43,7 @@ Telephony Audio Stream (SIP / WebRTC / Gateway)
 ## 2. Key Engineering Pillars
 
 ### A. Sub-Millisecond Audio Frame Reassembly
-Audio frames arriving over network connections frequently arrive out-of-order. VoicePipe uses a sliding monotonic frontier algorithm:
+Audio frames arriving over network connections frequently arrive out-of-order. AudioPipeline uses a sliding monotonic frontier algorithm:
 - Buffers out-of-order frames in an indexed memory map without blocking.
 - Advances the contiguous playback frontier dynamically.
 - Delivers instant concatenation via pre-allocated contiguous byte buffers.
@@ -68,7 +68,7 @@ Tested under high concurrency on an AMD Ryzen 8-core CPU:
 $ go test -bench="BenchmarkAudioIngestAndAssembly" -benchmem ./tests/...
 BenchmarkAudioIngestAndAssembly-8    1636477    788.9 ns/op    152 B/op    2 allocs/op
 PASS
-ok      github.com/yoohooshantanu/voicepipe/tests    4.467s
+ok      github.com/yoohooshantanu/audio-pipeline/tests    4.467s
 ```
 
 - **Ingestion Latency**: ~**788 nanoseconds per audio chunk** (sub-microsecond).
@@ -81,8 +81,8 @@ ok      github.com/yoohooshantanu/voicepipe/tests    4.467s
 ### Running Locally
 ```bash
 # Clone the repository
-git clone https://github.com/yoohooshantanu/voicepipe.git
-cd voicepipe
+git clone https://github.com/yoohooshantanu/audio-pipeline.git
+cd audio-pipeline
 
 # Run verified tests
 go test -v ./tests/...
@@ -124,7 +124,7 @@ curl -X POST http://localhost:8081/v1/jobs \
 ## 5. Repository Layout
 
 ```
-voicepipe/
+audio-pipeline/
 ├── cmd/server/main.go            # Gateway bootstrap, route registration, graceful shutdown
 ├── internal/
 │   ├── model/types.go            # Domain models: AudioChunk, StreamAck, PipelineJob, States

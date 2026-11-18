@@ -15,12 +15,12 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/yoohooshantanu/voicepipe/internal/broker"
-	"github.com/yoohooshantanu/voicepipe/internal/logger"
-	"github.com/yoohooshantanu/voicepipe/internal/metrics"
-	"github.com/yoohooshantanu/voicepipe/internal/model"
-	"github.com/yoohooshantanu/voicepipe/internal/orchestrator"
-	"github.com/yoohooshantanu/voicepipe/internal/stream"
+	"github.com/yoohooshantanu/audio-pipeline/internal/broker"
+	"github.com/yoohooshantanu/audio-pipeline/internal/logger"
+	"github.com/yoohooshantanu/audio-pipeline/internal/metrics"
+	"github.com/yoohooshantanu/audio-pipeline/internal/model"
+	"github.com/yoohooshantanu/audio-pipeline/internal/orchestrator"
+	"github.com/yoohooshantanu/audio-pipeline/internal/stream"
 )
 
 func getEnv(key, defaultVal string) string {
@@ -36,7 +36,7 @@ func main() {
 	workersStr := getEnv("WORKER_CONCURRENCY", "8")
 	numWorkers, _ := strconv.Atoi(workersStr)
 
-	logger.L.Info("starting_voicepipe", "port", port, "workers", numWorkers)
+	logger.L.Info("starting_audio-pipeline", "port", port, "workers", numWorkers)
 
 	// 1. Message Broker Layer
 	var msgBroker broker.MessageBroker
@@ -58,7 +58,7 @@ func main() {
 		context.Background(),
 		msgBroker,
 		stateStore,
-		"voicepipe_pipeline_jobs",
+		"audio_pipeline_pipeline_jobs",
 		numWorkers,
 	)
 	orch.Start()
@@ -226,7 +226,7 @@ func main() {
 	}
 
 	go func() {
-		logger.L.Info("voicepipe_listening", "port", port)
+		logger.L.Info("audio_pipeline_listening", "port", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.L.Error("server_listen_failed", "error", err)
 		}
@@ -237,7 +237,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.L.Info("shutting_down_voicepipe")
+	logger.L.Info("shutting_down_audio-pipeline")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -245,5 +245,5 @@ func main() {
 	orch.Stop()
 	streamMgr.Stop()
 	_ = msgBroker.Close()
-	logger.L.Info("voicepipe_terminated_cleanly")
+	logger.L.Info("audio_pipeline_terminated_cleanly")
 }

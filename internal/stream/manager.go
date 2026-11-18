@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yoohooshantanu/voicepipe/internal/logger"
-	"github.com/yoohooshantanu/voicepipe/internal/metrics"
-	"github.com/yoohooshantanu/voicepipe/internal/model"
+	"github.com/yoohooshantanu/audio-pipeline/internal/logger"
+	"github.com/yoohooshantanu/audio-pipeline/internal/metrics"
+	"github.com/yoohooshantanu/audio-pipeline/internal/model"
 )
 
 // Lock hierarchy: StreamManager.mu > AudioBuffer.mu.
