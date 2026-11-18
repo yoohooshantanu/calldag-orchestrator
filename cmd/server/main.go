@@ -38,7 +38,9 @@ func main() {
 
 	logger.L.Info("starting_audio-pipeline", "port", port, "workers", numWorkers)
 
-	// 1. Message Broker Layer
+	// -------
+	// Message broker initialization
+	// -------
 	var msgBroker broker.MessageBroker
 	if redisAddr != "" {
 		rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
@@ -49,10 +51,11 @@ func main() {
 		logger.L.Info("broker_memory_mode")
 	}
 
-	// 2. Audio Stream Session Manager
 	streamMgr := stream.NewStreamManager(5 * time.Minute)
 
-	// 3. Workflow State Store & Orchestrator
+	// -------
+	// Workflow state store and orchestrator worker pool
+	// -------
 	stateStore := orchestrator.NewMemoryStateStore()
 	orch := orchestrator.NewWorkflowOrchestrator(
 		context.Background(),
@@ -63,10 +66,14 @@ func main() {
 	)
 	orch.Start()
 
-	// 4. HTTP Gateway & Streaming API Endpoints
+	// -------
+	// HTTP Gateway and streaming API endpoints
+	// -------
 	mux := http.NewServeMux()
 
-	// Stream Chunk Ingest (REST chunked / binary upload)
+	// -------
+	// Audio stream chunk ingestion
+	// -------
 	mux.HandleFunc("/v1/streams/audio", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
@@ -111,10 +118,11 @@ func main() {
 			return
 		}
 
-		// Also publish to real-time distributed stream
 		_ = msgBroker.PublishStream(r.Context(), "audio:"+callID, chunk)
 
-		// On final chunk, broadcast stream completion metadata for downstream consumers
+		// -------
+		// Broadcast stream completion metadata on final chunk
+		// -------
 		if isFinal {
 			assembled, lastSeq, totalFrames := buf.AssembleContiguousAudio()
 			_ = msgBroker.PublishStream(r.Context(), "audio:completed:"+callID, map[string]interface{}{
@@ -130,7 +138,9 @@ func main() {
 		_ = json.NewEncoder(w).Encode(ack)
 	})
 
-	// Submit Async Pipeline Job
+	// -------
+	// Pipeline job lifecycle management
+	// -------
 	mux.HandleFunc("/v1/jobs", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			var req struct {
@@ -163,7 +173,6 @@ func main() {
 			_ = json.NewEncoder(w).Encode(job)
 
 		} else if r.Method == http.MethodGet {
-			// Query jobs by call_id: /v1/jobs?call_id=call_123
 			callID := r.URL.Query().Get("call_id")
 			if callID == "" {
 				http.Error(w, `{"error":"call_id query parameter required"}`, http.StatusBadRequest)
@@ -183,7 +192,6 @@ func main() {
 		}
 	})
 
-	// Get Single Job Status: /v1/jobs/{id}
 	mux.HandleFunc("/v1/jobs/", func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 		if len(parts) != 3 || parts[1] != "jobs" {
@@ -202,7 +210,9 @@ func main() {
 		_ = json.NewEncoder(w).Encode(job)
 	})
 
-	// Telemetry & Health
+	// -------
+	// Telemetry and observability endpoints
+	// -------
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -213,7 +223,6 @@ func main() {
 	})
 	mux.HandleFunc("/metrics", metrics.DefaultMetrics.Handler())
 
-	// pprof debugging
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 
@@ -232,7 +241,9 @@ func main() {
 		}
 	}()
 
-	// Graceful Shutdown
+	// -------
+	// Graceful shutdown on termination signal
+	// -------
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

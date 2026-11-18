@@ -9,8 +9,10 @@ import (
 	"github.com/yoohooshantanu/audio-pipeline/internal/model"
 )
 
+// -------
 // Lock hierarchy: StreamManager.mu > AudioBuffer.mu.
 // Always acquire sm.mu before b.mu; never acquire sm.mu while holding b.mu.
+// -------
 
 // AudioBuffer maintains ordered chunks for a live telephony call session
 type AudioBuffer struct {
@@ -41,7 +43,9 @@ func (b *AudioBuffer) IngestChunk(chunk *model.AudioChunk) (*model.StreamAck, er
 
 	b.lastActivity = time.Now()
 
+	// -------
 	// Enforce maximum buffer capacity per call to prevent memory exhaustion
+	// -------
 	if len(b.chunks) >= MaxChunksPerCall {
 		return &model.StreamAck{
 			CallID:        b.callID,
@@ -52,7 +56,6 @@ func (b *AudioBuffer) IngestChunk(chunk *model.AudioChunk) (*model.StreamAck, er
 		}, model.ErrQueueSaturated
 	}
 
-	// Check for backwards duplicate sequence
 	if chunk.Sequence < b.expectedSeq {
 		return &model.StreamAck{
 			CallID:        b.callID,
@@ -63,7 +66,6 @@ func (b *AudioBuffer) IngestChunk(chunk *model.AudioChunk) (*model.StreamAck, er
 		}, model.ErrDuplicateAudioSeq
 	}
 
-	// Prevent duplicate future chunk from double-counting bytes
 	if existing, exists := b.chunks[chunk.Sequence]; exists {
 		b.totalBytes -= len(existing.Data)
 	}
@@ -73,7 +75,9 @@ func (b *AudioBuffer) IngestChunk(chunk *model.AudioChunk) (*model.StreamAck, er
 
 	metrics.DefaultMetrics.IncAudioChunk(len(chunk.Data))
 
+	// -------
 	// Monotonically advance contiguous sequence frontier
+	// -------
 	for {
 		if _, ok := b.chunks[b.expectedSeq]; ok {
 			b.expectedSeq++

@@ -16,7 +16,9 @@ import (
 func TestAudioBufferOrderingAndAssembly(t *testing.T) {
 	buf := stream.NewAudioBuffer("call_test_01")
 
-	// Send out of order: seq 2 then seq 1
+	// -------
+	// Verify out-of-order sequence buffering and frontier advancement
+	// -------
 	chunk2 := &model.AudioChunk{
 		CallID:    "call_test_01",
 		Sequence:  2,
@@ -41,7 +43,7 @@ func TestAudioBufferOrderingAndAssembly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error ingesting chunk 1: %v", err)
 	}
-	// After sequence 1 arrives, frontier should jump to 2
+
 	if ack1.LastAckSeq != 2 {
 		t.Fatalf("expected contiguous sequence frontier 2, got %d", ack1.LastAckSeq)
 	}

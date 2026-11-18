@@ -113,14 +113,20 @@ func NewWorkflowOrchestrator(
 }
 
 func (o *WorkflowOrchestrator) registerStandardSteps() {
-	// Standard Post-Call AI Processing Pipeline
+	// -------
+	// Post-call audio processing pipeline stages
+	// -------
 	o.steps["post_call_ai_pipeline"] = []StepExecutor{
-		// Step 1: Audio Concatenation & Validation
+		// -------
+		// Stage 1: Audio concatenation & validation
+		// -------
 		func(ctx context.Context, job *model.PipelineJob) error {
 			time.Sleep(5 * time.Millisecond) // Simulated audio frame stitching
 			return nil
 		},
-		// Step 2: Speech Transcription & Diarization
+		// -------
+		// Stage 2: Speech transcription & diarization
+		// -------
 		func(ctx context.Context, job *model.PipelineJob) error {
 			time.Sleep(10 * time.Millisecond) // Simulated speech-to-text API call
 			if job.Result == nil {
@@ -129,14 +135,18 @@ func (o *WorkflowOrchestrator) registerStandardSteps() {
 			job.Result["transcription"] = "Customer inquired about service cancellation and billing cycle."
 			return nil
 		},
-		// Step 3: LLM Conversation Summary & Sentiment
+		// -------
+		// Stage 3: LLM conversation summary & sentiment analysis
+		// -------
 		func(ctx context.Context, job *model.PipelineJob) error {
 			time.Sleep(10 * time.Millisecond) // Simulated LLM analysis
 			job.Result["summary"] = "Customer resolved with standard retention offer."
 			job.Result["sentiment"] = "positive"
 			return nil
 		},
-		// Step 4: CRM / Webhook Sync
+		// -------
+		// Stage 4: CRM and webhook event dispatch
+		// -------
 		func(ctx context.Context, job *model.PipelineJob) error {
 			time.Sleep(5 * time.Millisecond) // Simulated CRM update
 			job.Result["crm_synced"] = true
@@ -272,7 +282,9 @@ func (o *WorkflowOrchestrator) handleStepFailure(job *model.PipelineJob, err err
 		job.State = model.StatePending
 		_ = o.store.SaveJob(o.ctx, job)
 
+		// -------
 		// Exponential backoff wait before re-enqueue
+		// -------
 		backoff := time.Duration(1<<job.RetryCount) * 100 * time.Millisecond
 		go func() {
 			select {
@@ -289,7 +301,9 @@ func (o *WorkflowOrchestrator) handleStepFailure(job *model.PipelineJob, err err
 		}()
 		logger.L.Warn("pipeline_job_retry", "job_id", job.ID, "attempt", job.RetryCount, "error", err.Error())
 	} else {
-		// DLQ routing
+		// -------
+		// Dead-letter queue routing when retries exhausted
+		// -------
 		metrics.DefaultMetrics.IncJobDLQ()
 		job.State = model.StateDeadLetter
 		_ = o.store.SaveJob(o.ctx, job)
