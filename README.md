@@ -1,12 +1,12 @@
-# AudioPipeline
+# CallDagOrchestrator
 
-[![CI](https://github.com/yoohooshantanu/voicepipe/actions/workflows/ci.yml/badge.svg)](https://github.com/yoohooshantanu/voicepipe/actions/workflows/ci.yml)
+[![CI](https://github.com/yoohooshantanu/calldag-orchestrator/actions/workflows/ci.yml/badge.svg)](https://github.com/yoohooshantanu/calldag-orchestrator/actions/workflows/ci.yml)
 ![Go](https://img.shields.io/badge/Go-1.23%2B-00ADD8)
 ![Redis](https://img.shields.io/badge/Redis-Streams%207%2B-DC382D)
 
 A streaming audio buffer manager and distributed asynchronous post-call workflow orchestrator written in Go. It handles the two disconnected timescales of telephony systems: high-throughput, low-latency audio packet reassembly (~617 ns) on the ingest fast path, and durable, multi-stage DAG workflow execution with distributed leases and per-step checkpoints on the post-call async path.
 
-*(The GitHub repo is called voicepipe. The Go module and binary are named audio-pipeline from an architectural rename.)*
+
 
 ### Key Technical Highlights
 - **Sub-Microsecond Ingest Fast Path:** Buffers and advances out-of-order audio frames in ~617 ns with zero allocations on the hot path via monotonic frontier tracking.
@@ -290,8 +290,8 @@ Returns array of `PipelineJob` objects for the specified call.
 ### Quickstart (30 seconds)
 
 ```bash
-git clone https://github.com/yoohooshantanu/voicepipe.git
-cd voicepipe
+git clone https://github.com/yoohooshantanu/calldag-orchestrator.git
+cd calldag-orchestrator
 
 # Run test suite with race detector
 go test -v -race ./tests/...
